@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>專業高精度碼錶</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .font-mono-numbers {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    /* 玻璃擬態質感 */
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    }
+    /* 圓形進度環過渡 */
+    .circle-progress {
+      stroke-dasharray: 880;
+      stroke-dashoffset: 880;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset 0.05s linear;
+    }
+    /* 自訂捲軸樣式 */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.8);
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4 sm:p-6 select-none">
+
+  <div class="w-full max-w-lg flex flex-col items-center">
+    
+    <!-- 頂部標題與快速設定 -->
+    <header class="w-full flex items-center justify-between mb-6 px-2">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <i class="fa-solid fa-stopwatch text-white text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">精準碼錶</h1>
+          <p class="text-xs text-slate-400">高精度微秒計時與圈速紀錄</p>
+        </div>
+      </div>
+      
+      <!-- 靜音切換按鈕 -->
+      <button id="soundToggle" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-300 hover:text-white transition duration-200" title="切換按鈕音效">
+        <i id="soundIcon" class="fa-solid fa-volume-high text-sm"></i>
+      </button>
+    </header>
+
+    <!-- 核心碼錶卡片 -->
+    <div class="w-full glass-panel rounded-3xl p-6 sm:p-8 flex flex-col items-center relative overflow-hidden">
+      
+      <!-- 頂部裝飾背景光暈 -->
+      <div class="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- 圓環計時儀表板 -->
+      <div class="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center my-2">
+        <svg class="w-full h-full" viewBox="0 0 300 300">
+          <!-- 背景底軌跡 -->
+          <circle cx="150" cy="150" r="140" stroke="rgba(255, 255, 255, 0.05)" stroke-width="8" fill="transparent" />
+          <!-- 動態秒數進度環 -->
+          <circle id="progressCircle" class="circle-progress" cx="150" cy="150" r="140" stroke="url(#cyan-gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" />
+          <defs>
+            <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#06b6d4" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <!-- 數字時間顯示 -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1" id="statusBadge">準備就緒</div>
+          
+          <div class="flex items-baseline font-mono-numbers font-bold text-white tracking-tight">
+            <!-- 分鐘:秒 -->
+            <span id="displayMinutes" class="text-4xl sm:text-5xl">00</span>
+            <span class="text-3xl sm:text-4xl text-cyan-400 mx-0.5">:</span>
+            <span id="displaySeconds" class="text-4xl sm:text-5xl">00</span>
+            <span class="text-2xl sm:text-3xl text-slate-400 mx-1">.</span>
+            <!-- 毫秒/微秒 -->
+            <span id="displayMilliseconds" class="text-2xl sm:text-3xl text-cyan-400 font-semibold w-12 text-left">00</span>
+          </div>
+
+          <!-- 當前圈時間 (若計時中) -->
+          <div id="currentLapTime" class="text-xs font-mono-numbers text-slate-400 mt-2 opacity-0 transition-opacity">
+            圈速: 00:00.00
+          </div>
+        </div>
+      </div>
+
+      <!-- 控制按鈕組 -->
+      <div class="grid grid-cols-3 gap-3 sm:gap-4 w-full mt-6">
+        
+        <!-- 計圈 (Lap) 按鈕 -->
+        <button id="lapBtn" disabled class="flex items-center justify-center py-3.5 px-4 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-400 font-medium hover:text-white hover:bg-slate-700/90 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none disabled:active:scale-100 shadow-sm">
+          <i class="fa-solid fa-flag-checkered mr-2 text-sm"></i>
+          <span>計圈</span>
+        </button>
+
+        <!-- 開始 / 暫停按鈕 (主要按鈕) -->
+        <button id="startPauseBtn" class="flex items-center justify-center py-3.5 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold shadow-lg shadow-cyan-500/25 transition-all active:scale-95">
+          <i id="startPauseIcon" class="fa-solid fa-play mr-2 text-sm"></i>
+          <span id="startPauseText">開始</span>
+        </button>
+
+        <!-- 重置按鈕 -->
+        <button id="resetBtn" disabled class="flex items-center justify-center py-3.5 px-4 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-400 font-medium hover:text-rose-400 hover:bg-slate-700/90 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none disabled:active:scale-100 shadow-sm">
+          <i class="fa-solid fa-arrow-rotate-left mr-2 text-sm"></i>
+          <span>重置</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 計圈歷史清單 -->
+    <div id="lapSection" class="w-full mt-6 glass-panel rounded-3xl p-5 flex flex-col hidden transition-all duration-300">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700/60 mb-2">
+        <h2 class="text-sm font-semibold text-slate-300 flex items-center">
+          <i class="fa-solid fa-list-ol mr-2 text-cyan-400"></i>圈速記錄 (<span id="lapCount">0</span>)
+        </h2>
+        <button id="clearLapsBtn" class="text-xs text-slate-400 hover:text-rose-400 transition-colors">
+          清空圈速
+        </button>
+      </div>
+
+      <div id="lapList" class="max-h-52 overflow-y-auto custom-scrollbar flex flex-col space-y-2 pr-1">
+        <!-- 圈速項目由 JS 動態新增 -->
+      </div>
+    </div>
+
+    <!-- 底部快捷鍵提示 -->
+    <footer class="mt-6 text-center text-xs text-slate-500 flex items-center justify-center space-x-4">
+      <span><kbd class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-400 font-mono text-[10px]">空白鍵</kbd> 開始/暫停</span>
+      <span><kbd class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-400 font-mono text-[10px]">L</kbd> 計圈</span>
+      <span><kbd class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-400 font-mono text-[10px]">R</kbd> 重置</span>
+    </footer>
+
+  </div>
+
+  <script>
+    // 狀態變數
+    let isRunning = false;
+    let startTime = 0;
+    let elapsedTime = 0;
+    let animationFrameId = null;
+    let lastLapTime = 0;
+    let laps = [];
+    let isSoundEnabled = true;
+
+    // 音效合成器 (使用 Web Audio API，無需外部音效檔)
+    let audioCtx = null;
+    function playBeep(frequency = 600, duration = 0.06, type = 'sine') {
+      if (!isSoundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn('音效播放失敗:', e);
+      }
+    }
+
+    // DOM 元素引用
+    const displayMinutes = document.getElementById('displayMinutes');
+    const displaySeconds = document.getElementById('displaySeconds');
+    const displayMilliseconds = document.getElementById('displayMilliseconds');
+    const currentLapTimeElem = document.getElementById('currentLapTime');
+    const statusBadge
